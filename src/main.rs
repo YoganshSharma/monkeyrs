@@ -1,4 +1,6 @@
 mod lexer;
+mod ast;
+mod parser;
 mod repl;
 use crate::repl::start;
 use std::io::{stdin, stdout, BufReader, BufWriter};

@@ -1,6 +1,6 @@
-use std::error::Error;
+use anyhow::Result;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TokenType {
     Ident(String),
     Int(String),
@@ -58,10 +58,10 @@ impl Lexer {
             ch: 0,
         };
         l.read_char();
-        return l;
+        l
     }
 
-    pub fn next_token(&mut self) -> Result<TokenType, Box<dyn Error>> {
+    pub fn next_token(&mut self) -> Result<TokenType> {
         self.skip_whitespace();
         let tok = match self.ch {
             b';' => {
@@ -192,10 +192,10 @@ impl Lexer {
     }
 
     fn is_ident_ch(&self) -> bool {
-        matches!(self.ch, b'a'..=b'z'|b'A'..=b'Z'|b'_')
+        self.ch.is_ascii_alphabetic() || self.ch == b'_'
     }
     fn is_number_ch(&self) -> bool {
-        matches!(self.ch, b'0'..=b'9')
+        self.ch.is_ascii_digit()
     }
     fn skip_whitespace(&mut self) {
         while matches!(self.ch, b' '| b'\t' |b'\n' |b'\r' ) {
