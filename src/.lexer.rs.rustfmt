@@ -1,6 +1,6 @@
-use anyhow::Result;
+use std::error::Error;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
     Ident(String),
     Int(String),
@@ -39,6 +39,7 @@ pub enum TokenType {
     If,
     Else,
     Return,
+
 }
 
 pub struct Lexer {
@@ -57,53 +58,89 @@ impl Lexer {
             ch: 0,
         };
         l.read_char();
-        l
+        return l;
     }
 
-    pub fn next_token(&mut self) -> Result<TokenType> {
+    pub fn next_token(&mut self) -> Result<TokenType, Box<dyn Error>> {
         self.skip_whitespace();
         let tok = match self.ch {
-            b';' => Ok(TokenType::Semicolon),
-            b')' => Ok(TokenType::Rparen),
-            b'(' => Ok(TokenType::Lparen),
-            b'{' => Ok(TokenType::Lsquigly),
-            b'}' => Ok(TokenType::Rsquigly),
-            b',' => Ok(TokenType::Comma),
-            b'+' => Ok(TokenType::Plus),
-            b'-' => Ok(TokenType::Minus),
-            b'*' => Ok(TokenType::Asterisk),
-            b'/' => Ok(TokenType::Slash),
-            b'!' => match self.peek_char() {
-                b'=' => {
-                    self.read_char();
-                    Ok(TokenType::NotEqual)
+            b';' => {
+                Ok(TokenType::Semicolon)
+            }
+            b')' => {
+                Ok(TokenType::Rparen)
+            }
+            b'(' => {
+                Ok(TokenType::Lparen)
+            }
+            b'{' => {
+                Ok(TokenType::Lsquigly)
+            }
+            b'}' => {
+                Ok(TokenType::Rsquigly)
+            }
+            b',' => {
+                Ok(TokenType::Comma)
+            }
+            b'+' => {
+                Ok(TokenType::Plus)
+            }
+            b'-' => {
+                Ok(TokenType::Minus)
+            }
+            b'*' => {
+                Ok(TokenType::Asterisk)
+            }
+            b'/' => {
+                Ok(TokenType::Slash)
+            }
+            b'!' => {
+                match self.peek_char() {
+                    b'=' => {
+                        self.read_char();
+                        Ok(TokenType::NotEqual)
+                    }
+                    _ => {
+                        Ok(TokenType::Bang)
+                    }
                 }
-                _ => Ok(TokenType::Bang),
-            },
-            b'<' => match self.peek_char() {
-                b'=' => {
-                    self.read_char();
-                    Ok(TokenType::LessThanEq)
+            }
+            b'<' => {
+                match self.peek_char() {
+                    b'=' => {
+                        self.read_char();
+                        Ok(TokenType::LessThanEq)
+                    }
+                    _ => {
+                        Ok(TokenType::LessThan)
+                    }
                 }
-                _ => Ok(TokenType::LessThan),
-            },
-            b'>' => match self.peek_char() {
-                b'=' => {
-                    self.read_char();
-                    Ok(TokenType::GreaterThanEq)
+            }
+            b'>' => {
+                match self.peek_char() {
+                    b'=' => {
+                        self.read_char();
+                        Ok(TokenType::GreaterThanEq)
+                    }
+                    _ => {
+                        Ok(TokenType::GreaterThan)
+                    }
                 }
-                _ => Ok(TokenType::GreaterThan),
-            },
-            b'=' => match self.peek_char() {
-                b'=' => {
-                    self.read_char();
-                    Ok(TokenType::Equal)
+            }
+            b'=' => {
+                match self.peek_char() {
+                    b'=' => {
+                        self.read_char();
+                        Ok(TokenType::Equal)
+                    }
+                    _ => {
+                        Ok(TokenType::Assign)
+                    }
                 }
-                _ => Ok(TokenType::Assign),
-            },
-            b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
+            }
+            b'a'..=b'z'|b'A'..=b'Z'|b'_' => {
                 let ident = self.read_ident();
-                return match ident.as_str() {
+               return match ident.as_str() {
                     "let" => Ok(TokenType::Let),
                     "fn" => Ok(TokenType::Function),
                     "true" => Ok(TokenType::True),
@@ -112,12 +149,18 @@ impl Lexer {
                     "else" => Ok(TokenType::Else),
                     "return" => Ok(TokenType::Return),
                     _ => Ok(TokenType::Ident(ident)),
-                };
+                }
+
             }
-            b'0'..=b'9' => return Ok(TokenType::Int(self.read_number())),
+            b'0'..=b'9' => {
+                return Ok(TokenType::Int(self.read_number()))
+            }
+
 
             0 => Ok(TokenType::Eof),
-            _ => Ok(TokenType::Illegal),
+            _ => {
+                Ok(TokenType::Illegal)
+            }
         };
         self.read_char();
         tok
@@ -135,7 +178,7 @@ impl Lexer {
 
     fn peek_char(&self) -> u8 {
         if self.read_position >= self.input.len() {
-            return 0;
+             return 0;
         }
         self.input[self.read_position]
     }
@@ -144,19 +187,20 @@ impl Lexer {
         while self.is_ident_ch() {
             literal.push(self.ch.try_into().unwrap());
             self.read_char();
-        }
+        } 
         literal
     }
 
     fn is_ident_ch(&self) -> bool {
-        self.ch.is_ascii_alphabetic() || self.ch == b'_'
+        matches!(self.ch, b'a'..=b'z'|b'A'..=b'Z'|b'_')
     }
     fn is_number_ch(&self) -> bool {
-        self.ch.is_ascii_digit()
+        self.ch
+        matches!(self.ch, b'0'..=b'9')
     }
     fn skip_whitespace(&mut self) {
-        while matches!(self.ch, b' ' | b'\t' | b'\n' | b'\r') {
-            self.read_char();
+        while matches!(self.ch, b' '| b'\t' |b'\n' |b'\r' ) {
+           self.read_char() ;
         }
     }
 
@@ -165,15 +209,15 @@ impl Lexer {
         while self.is_number_ch() {
             literal.push(self.ch.try_into().unwrap());
             self.read_char();
-        }
+        } 
         literal
     }
+
 }
 
 #[test]
 fn lexertest() {
-    let input = String::from(
-        "let five = 5;
+    let input = String::from("let five = 5;
     let ten = 10;
     let add = fn(x, y) {
     x + y;
@@ -187,8 +231,7 @@ fn lexertest() {
     return false;
     }
     10 == 10;
-    10 != 9; ",
-    );
+    10 != 9; ");
     let tests = vec![
         TokenType::Let,
         TokenType::Ident(String::from("five")),
@@ -269,4 +312,5 @@ fn lexertest() {
     for tok in tests {
         assert_eq!(tok, lex.next_token().unwrap());
     }
+
 }
